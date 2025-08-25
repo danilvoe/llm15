@@ -23,11 +23,14 @@ class Product:
         self.price = price
         self.stock = stock
 
-    def update_stock(self, amount):
-        self.stock += amount
+    def reduce_stock(self, quantity):
+        if self.stock >= quantity:
+            self.stock -= quantity
+            return True
+        return False
 
-    def is_available(self):
-        return self.stock > 0
+    def add_stock(self, quantity):
+        self.stock += quantity
 
     def get_price(self):
         return self.price
@@ -39,57 +42,28 @@ class Product:
 class Order:
     def __init__(self, user, products=None):
         self.user = user
-        self.products = products or []
-        self.total_price = 0
+        self.products = products if products else []
+        self.total = 0
 
-    def add_product(self, product):
-        if product.is_available():
-            self.products.append(product)
-            self.total_price += product.get_price()
-
-    def remove_product(self, product):
-        if product in self.products:
-            self.products.remove(product)
-            self.total_price -= product.get_price()
+    def add_product(self, product, quantity):
+        if product.reduce_stock(quantity):
+            self.products.append((product, quantity))
+            self.total += product.get_price() * quantity
+            return True
+        return False
 
     def get_total(self):
-        return self.total_price
+        return self.total
 
-    def confirm_order(self):
-        for product in self.products:
-            product.update_stock(-1)
+    def finalize_order(self):
         self.user.add_order(self)
-        return f"Order confirmed. Total: {self.total_price}"
+        return f"Order finalized. Total: {self.total}"
+
+    def get_products(self):
+        return self.products
 
     def __str__(self):
-        return f"Order by {self.user.name}, Total: {self.total_price}"
-
-
-class Store:
-    def __init__(self, name):
-        self.name = name
-        self.products = []
-
-    def add_product(self, product):
-        self.products.append(product)
-
-    def find_product(self, name):
-        for product in self.products:
-            if product.name == name:
-                return product
-        return None
-
-    def list_products(self):
-        return [str(p) for p in self.products]
-
-    def get_total_inventory_value(self):
-        total = 0
-        for product in self.products:
-            total += product.get_price() * product.stock
-        return total
-
-    def __str__(self):
-        return f"Store: {self.name}"
+        return f"Order for {self.user.name}, Total: {self.total}"
 
 
 class ShoppingCart:
@@ -97,20 +71,47 @@ class ShoppingCart:
         self.user = user
         self.items = []
 
-    def add_item(self, product):
-        if product.is_available():
-            self.items.append(product)
-
-    def remove_item(self, product):
-        if product in self.items:
-            self.items.remove(product)
+    def add_item(self, product, quantity):
+        self.items.append((product, quantity))
 
     def get_total(self):
-        return sum(item.get_price() for item in self.items)
+        total = 0
+        for product, quantity in self.items:
+            total += product.get_price() * quantity
+        return total
 
     def checkout(self):
-        order = Order(self.user, self.items)
-        return order.confirm_order()
+        order = Order(self.user)
+        for product, quantity in self.items:
+            order.add_product(product, quantity)
+        return order.finalize_order()
+
+    def clear(self):
+        self.items.clear()
+
+    def get_items(self):
+        return self.items
+
+
+class Store:
+    def __init__(self):
+        self.products = []
+        self.users = []
+
+    def add_product(self, product):
+        self.products.append(product)
+
+    def register_user(self, user):
+        self.users.append(user)
+
+    def find_user(self, email):
+        for user in self.users:
+            if user.email == email:
+                return user
+        return None
+
+    def get_products(self):
+        return self.products
 
     def __str__(self):
-        return f"Shopping Cart for {self.user.name}, Items: {len(self.items)}"
+        return f"Store with {len(self.products)} products and {len(self.users)} users"
