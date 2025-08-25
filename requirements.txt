@@ -1,0 +1,4 @@
+dotenv
+docker
+ollama
+gitpython=3.1.45
